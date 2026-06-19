@@ -5,29 +5,35 @@ on:
     branches:
       - master
       - gh_actions
-
+      - win
   pull_request:
-    branches:
-      - master
+  workflow_dispatch:
 
 jobs:
-  build:
-    runs-on: ubuntu-20.04
+  linux:
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - ubuntu-22.04
+          - ubuntu-24.04
+          - ubuntu-24.04-arm
+          - ubuntu-26.04
+    runs-on: ${{ matrix.os }}
 
     steps:
-      - uses: actions/checkout@master
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
 
       - name: Install deps
-        run: sudo apt-get update && sudo apt-get -y install libxml2-dev libreadline-dev valgrind libtool-bin
+        run: sudo apt-get update && sudo apt-get -y install libxml2-dev libreadline-dev valgrind libtool-bin autoconf automake bison flex pkg-config
 
+      # --disable-gnulib-tests: gnulib's bundled test harness fails to build
+      # against newer toolchains/libc (e.g. test-limits-h "BOOL_MAX undeclared")
+      # which has nothing to do with augeas; we only want augeas's own tests.
       - name: Autogen
-        run: ./autogen.sh
-
-      - name: ENOENT
-        run: sed -i '41s/ENOENT/ENOENT || errno == EINVAL/' gnulib/tests/test-readlink.h
-
-      - name: Configure
-        run: ./configure
+        run: ./autogen.sh --disable-gnulib-tests
 
       - name: Make
         run: make
@@ -37,3 +43,78 @@ jobs:
 
       - name: Valgrind
         run: ./src/try valgrind
+
+  macos:
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - macos-13
+          - macos-14
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install deps
+        run: brew install autoconf automake libtool readline libxml2 pkg-config bison
+
+      # macOS ships an ancient bison (2.3) and uses libedit (not GNU readline)
+      # by default, so we point at the Homebrew bison + readline. The
+      # CPPFLAGS/LDFLAGS make configure find GNU readline (which has rl_crlf /
+      # rl_replace_line / rl_char_is_quoted_p that libedit lacks).
+      # --disable-gnulib-tests: skip gnulib's own test harness (fails to build
+      # against the newer macOS SDK; unrelated to augeas).
+      - name: Build and test
+        run: |
+          export PATH="$(brew --prefix bison)/bin:$PATH"
+          export PKG_CONFIG_PATH="$(brew --prefix libxml2)/lib/pkgconfig:$(brew --prefix readline)/lib/pkgconfig"
+          export CPPFLAGS="-I$(brew --prefix readline)/include"
+          export LDFLAGS="-L$(brew --prefix readline)/lib"
+          ./autogen.sh --disable-gnulib-tests
+          make
+          make check VERBOSE=1
+
+  windows:
+    runs-on: windows-latest
+
+    defaults:
+      run:
+        shell: msys2 {0}
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - uses: msys2/setup-msys2@v2
+        with:
+          msystem: MINGW64
+          update: true
+          install: >-
+            base-devel
+            git
+            autoconf
+            automake
+            libtool
+            bison
+            flex
+            mingw-w64-x86_64-toolchain
+            mingw-w64-x86_64-libxml2
+            mingw-w64-x86_64-readline
+            mingw-w64-x86_64-pkgconf
+
+      # mingw-w64 gcc 14+ promotes implicit-function-declaration to an error and
+      # its <sys/types.h> doesn't define the BSD-ism `uint` augeas uses, so we
+      # rewrite it at preprocessor time. Both flags match the pkgx recipe.
+      - name: Autogen
+        run: |
+          export CFLAGS="-Wno-implicit-function-declaration -Duint=unsigned"
+          ./autogen.sh --disable-static --disable-dependency-tracking
+
+      - name: Make
+        run: |
+          export CFLAGS="-Wno-implicit-function-declaration -Duint=unsigned"
+          make

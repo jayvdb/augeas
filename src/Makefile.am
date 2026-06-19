@@ -7,7 +7,7 @@ AM_YFLAGS=-d -p spec_
 
 EXTRA_DIST = try augeas_sym.version fa_sym.version
 
-BUILT_SOURCES = datadir.h parser.h
+BUILT_SOURCES = datadir.h
 
 DISTCLEANFILES = datadir.h
 

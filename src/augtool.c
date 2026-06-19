@@ -35,7 +35,9 @@
 #include <signal.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#ifndef _WIN32
 #include <pwd.h>
+#endif
 #include <stdarg.h>
 #include <sys/time.h>
 
@@ -102,7 +104,7 @@ static char *readline_path_generator(const char *text, int state) {
     static int nchildren = 0;
     static char *ctx = NULL;
 
-    const char *end = strrchr(text, SEP);
+    char *end = strrchr(text, SEP);
     if (end != NULL)
         end += 1;
 
@@ -232,6 +234,13 @@ static char **readline_completion(const char *text, int start,
 }
 
 static char *get_home_dir(uid_t uid) {
+#ifdef _WIN32
+    (void)uid;
+    const char *env = getenv("HOME");
+    if (env == NULL)
+        env = getenv("USERPROFILE");
+    return env ? strdup(env) : NULL;
+#else
     char *strbuf;
     char *result;
     struct passwd pwbuf;
@@ -265,6 +274,7 @@ static char *get_home_dir(uid_t uid) {
     free(strbuf);
 
     return result;
+#endif
 }
 
 /* Inspired from:
@@ -285,7 +295,11 @@ static void readline_init(void) {
     rl_char_is_quoted_p = &quote_detector;
 
     /* Set up persistent history */
+#ifdef _WIN32
+    char *home_dir = get_home_dir(0);
+#else
     char *home_dir = get_home_dir(getuid());
+#endif
     char *history_dir = NULL;
 
     if (home_dir == NULL)
@@ -502,6 +516,7 @@ static void print_aug_error(void) {
     }
 }
 
+#ifndef _WIN32
 static void sigint_handler(ATTRIBUTE_UNUSED int signum) {
     // Cancel the current line of input, along with undo info for that line.
     rl_replace_line("", 1);
@@ -510,15 +525,20 @@ static void sigint_handler(ATTRIBUTE_UNUSED int signum) {
     rl_crlf();
     rl_forced_update_display();
 }
+#endif
 
 static void install_signal_handlers(void) {
     // On Ctrl-C, cancel the current line (rather than exit the program).
+    // mingw-w64 has no POSIX sigaction/SIGINT machinery, so this is a no-op
+    // on Windows.
+#ifndef _WIN32
     struct sigaction sigint_action;
     MEMZERO(&sigint_action, 1);
     sigint_action.sa_handler = sigint_handler;
     sigemptyset(&sigint_action.sa_mask);
     sigint_action.sa_flags = 0;
     sigaction(SIGINT, &sigint_action, NULL);
+#endif
 }
 
 static int main_loop(void) {

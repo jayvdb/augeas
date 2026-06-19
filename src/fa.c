@@ -3550,8 +3550,6 @@ static struct re *parse_regexp(struct re_parse *parse) {
     return re;
 
  error:
-    if (re == NULL && parse->error == REG_NOERROR)
-        parse->error = _REG_ENOSYS;
     re_unref(re);
     return NULL;
 }
@@ -4477,7 +4475,7 @@ static void print_char(FILE *out, uchar c) {
        Also, a space ' ' is shown as '\s' */
     static const char *const escape_from = " \n\t\v\b\r\f\a/\0";
     static const char *const escape_to = "sntvbrfa/0";
-    const char *p = strchr(escape_from, c);
+    char *p = strchr(escape_from, c);
     if (p != NULL) {
         int i = p - escape_from;
         fprintf(out, "\\\\%c", escape_to[i]);
