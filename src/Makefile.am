@@ -35,7 +35,7 @@ else
 endif
 
 libaugeas_la_LDFLAGS = $(AUGEAS_VERSION_SCRIPT) \
-    -version-info $(LIBAUGEAS_VERSION_INFO)
+    -version-info $(LIBAUGEAS_VERSION_INFO) -no-undefined
 libaugeas_la_LIBADD = liblexer.la libfa.la $(LIB_SELINUX) $(LIBXML_LIBS) $(GNULIB)
 
 augtool_SOURCES = augtool.c
@@ -52,7 +52,7 @@ augprint_LDADD = libaugeas.la $(GNULIB)
 
 libfa_la_SOURCES = fa.c fa.h hash.c hash.h memory.c memory.h ref.h ref.c
 libfa_la_LIBADD = $(LIB_SELINUX) $(GNULIB)
-libfa_la_LDFLAGS = $(FA_VERSION_SCRIPT) -version-info $(LIBFA_VERSION_INFO)
+libfa_la_LDFLAGS = $(FA_VERSION_SCRIPT) -version-info $(LIBFA_VERSION_INFO) -no-undefined
 
 liblexer_la_SOURCES = lexer.l
 liblexer_la_CFLAGS = $(AM_CFLAGS) -Wno-error
