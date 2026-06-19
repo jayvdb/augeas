@@ -26,7 +26,98 @@
 #include <stdarg.h>
 #include <limits.h>
 #include <ctype.h>
+#ifdef _WIN32
+/* mingw-w64 ships no <glob.h> / glob(). Provide a minimal shim covering just
+ * the surface the module-loading code below uses, built on opendir/readdir
+ * (native on mingw) plus gnulib's fnmatch. */
+#include <stdlib.h>
+#include <stdio.h>
+#include <string.h>
+#include <dirent.h>
+#include <fnmatch.h>
+
+#define GLOB_NOSORT  0x01
+#define GLOB_APPEND  0x02
+#define GLOB_NOMATCH 1
+#define GLOB_NOSPACE 2
+
+typedef struct {
+    size_t gl_pathc;
+    char **gl_pathv;
+} glob_t;
+
+static int glob(const char *pattern, int flags,
+                int (*errfunc)(const char *, int), glob_t *pglob) {
+    (void) errfunc;
+    if (!(flags & GLOB_APPEND)) {
+        pglob->gl_pathc = 0;
+        pglob->gl_pathv = NULL;
+    }
+
+    const char *slash = strrchr(pattern, '/');
+    char *dir;
+    const char *fpat;
+    if (slash == NULL) {
+        dir = strdup(".");
+        fpat = pattern;
+    } else {
+        dir = strndup(pattern, slash - pattern);
+        if (dir != NULL && dir[0] == '\0') {
+            free(dir);
+            dir = strdup("/");
+        }
+        fpat = slash + 1;
+    }
+    if (dir == NULL)
+        return GLOB_NOSPACE;
+
+    DIR *d = opendir(dir);
+    if (d == NULL) {
+        free(dir);
+        return GLOB_NOMATCH;
+    }
+
+    int rc = 0;
+    size_t found = 0;
+    struct dirent *e;
+    while ((e = readdir(d)) != NULL) {
+        if (fnmatch(fpat, e->d_name, 0) != 0)
+            continue;
+        char *full;
+        if (asprintf(&full, "%s/%s", dir, e->d_name) < 0) {
+            rc = GLOB_NOSPACE;
+            break;
+        }
+        char **nv = realloc(pglob->gl_pathv,
+                            (pglob->gl_pathc + 1) * sizeof(*nv));
+        if (nv == NULL) {
+            free(full);
+            rc = GLOB_NOSPACE;
+            break;
+        }
+        pglob->gl_pathv = nv;
+        pglob->gl_pathv[pglob->gl_pathc++] = full;
+        found++;
+    }
+    closedir(d);
+    free(dir);
+    if (rc != 0)
+        return rc;
+    return found > 0 ? 0 : GLOB_NOMATCH;
+}
+
+static void globfree(glob_t *pglob) {
+    if (pglob->gl_pathv != NULL) {
+        for (size_t i = 0; i < pglob->gl_pathc; i++)
+            free(pglob->gl_pathv[i]);
+        free(pglob->gl_pathv);
+        pglob->gl_pathv = NULL;
+    }
+    pglob->gl_pathc = 0;
+}
+#else
 #include <glob.h>
+#endif
 #include <argz.h>
 #include <sys/types.h>
 #include <sys/stat.h>
