@@ -1948,7 +1948,7 @@ static char *module_filename(struct augeas *aug, const char *modname) {
      * loading a module in another directory, but once loaded we won't find
      * it under MODNAME so that we will later try and load it over and
      * over */
-    if (index(modname, '/') != NULL)
+    if (strchr(modname, '/') != NULL)
         goto error;
 
     while ((dir = argz_next(aug->modpathz, aug->nmodpath, dir)) != NULL) {

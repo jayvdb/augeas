@@ -58,7 +58,7 @@ char *regexp_escape(const struct regexp *r) {
     if (pat == NULL) {
         /* simplify the regexp by removing some artifacts of reserving
            chanaracters for internal purposes */
-        if (index(r->pattern->str, RESERVED_FROM_CH)) {
+        if (strchr(r->pattern->str, RESERVED_FROM_CH)) {
             char *s = strdup(r->pattern->str);
             char *t = s;
             for (char *p = s; *p; p++) {

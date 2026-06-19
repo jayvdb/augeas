@@ -32,6 +32,20 @@
 #include <selinux/selinux.h>
 #include <stdbool.h>
 
+#ifdef _WIN32
+/* mingw-w64 has no POSIX fchown/fchmod (gnulib has no module for them either).
+ * Windows has no Unix-style file ownership and no meaningful fd-based chmod, so
+ * treat those as successful no-ops. fsync is provided portably by gnulib. */
+static inline int fchown(int fd, short uid, short gid) {
+    (void) fd; (void) uid; (void) gid;
+    return 0;
+}
+static inline int fchmod(int fd, int mode) {
+    (void) fd; (void) mode;
+    return 0;
+}
+#endif
+
 #include "internal.h"
 #include "memory.h"
 #include "augeas.h"

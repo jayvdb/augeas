@@ -66,6 +66,7 @@ gnulib_tool=$GNULIB_SRCDIR/gnulib-tool
 modules='
 argz
 fnmatch
+fsync
 getline
 getopt-gnu
 gitlog-to-changelog
