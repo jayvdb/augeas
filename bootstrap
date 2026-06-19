@@ -68,7 +68,6 @@ argz
 fnmatch
 getline
 getopt-gnu
-glob
 gitlog-to-changelog
 canonicalize-lgpl
 isblank

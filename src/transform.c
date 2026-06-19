@@ -23,7 +23,7 @@
 #include <config.h>
 
 #include <fnmatch.h>
-#include <glob.h>
+#include "glob-compat.h"
 
 #include <sys/types.h>
 #include <sys/stat.h>
