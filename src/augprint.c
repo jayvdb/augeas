@@ -74,6 +74,14 @@
 #include <unistd.h>
 #include "augprint.h"
 
+/* mingw-w64's <sys/param.h> does not define MIN/MAX (unlike BSD/Linux/macOS). */
+#ifndef MIN
+# define MIN(a, b) ((a) < (b) ? (a) : (b))
+#endif
+#ifndef MAX
+# define MAX(a, b) ((a) > (b) ? (a) : (b))
+#endif
+
 #define CHECK_OOM(condition, action, arg)         \
     do {                                          \
         if (condition) {                          \
