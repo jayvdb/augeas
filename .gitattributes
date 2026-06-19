@@ -1,0 +1,24 @@
+# Force LF for the build system, source, and shell scripts so the MSYS2 /
+# mingw-w64 Windows build doesn't choke on CRLF. The GitHub windows runner
+# checks out with core.autocrlf=true by default; with CRLF, the backslash-
+# newline line continuations in configure.ac's AC_OUTPUT(...) stop being
+# continuations (the \<CR> is no longer at end-of-line) and autoconf errors
+# with "'\' is already registered with AC_CONFIG_FILES".
+#
+# Test fixtures under tests/ are intentionally NOT normalized here: some
+# lenses parse CRLF input and their test data must keep its byte-for-byte
+# line endings.
+
+configure.ac text eol=lf
+bootstrap    text eol=lf
+autogen.sh   text eol=lf
+
+*.ac  text eol=lf
+*.am  text eol=lf
+*.m4  text eol=lf
+*.sh  text eol=lf
+*.c   text eol=lf
+*.h   text eol=lf
+*.y   text eol=lf
+*.l   text eol=lf
+*.aug text eol=lf
